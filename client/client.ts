@@ -3,6 +3,9 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import type { Tool } from 'ollama';
 import { Ollama } from 'ollama';
+import dotenv from 'dotenv';
+
+dotenv.config();  
 
 class OllamaChatHandler {
   private chatHistory: { role: 'user' | 'assistant'; content: string }[] = [];
@@ -33,13 +36,20 @@ class OllamaChatHandler {
 
   async processResponse(response: any) {
     if (response.message.tool_calls) {
-      await this.handleToolCall(response);
+      this.ui.write("Ollama use tool calls\n");
+      for (const toolCall of response.message.tool_calls) {
+        this.ui.write(`Ollama use tool: ${toolCall.function.name}\n`);
+        await this.handleToolCall({
+          name: toolCall.function.name,
+          arguments: JSON.stringify(toolCall.function.arguments)
+        });
+      }
     } else if (response.message.content) {
       this.chatHistory.push({
         role: 'assistant',
-        content: response.content
+        content: response.message.content
       });
-      this.ui.write(response.content + '\n');
+      this.ui.write(response.message.content + '\n');
     }
   }
 
@@ -105,25 +115,41 @@ class OllamaChatHandler {
     const prompt = await this.ui.question(this.aiGreetingText + '\n');
     this.chatHistory.push({ role: 'user', content: prompt });
 
-    const response = await this.ollama.chat({
-      model: this.ollamaModel,
-      messages: this.chatHistory,
-      tools: [...this.tools.tools, ...this.tools.resources],
-    });
-
-    // Prepare the messages for Ollama
-    const messages = this.chatHistory.map(msg => ({
-      role: msg.role,
-      content: msg.content
-    }));
-
-    await this.processResponse(response);
+    try {
+      // System prompt is now handled by the Ollama JS library
+      const response = await this.ollama.chat({
+        model: this.ollamaModel,
+        messages: this.chatHistory,
+        tools: [...this.tools.tools, ...this.tools.resources],
+      });
+      if (response.message.tool_calls && response.message.tool_calls.length > 0) {
+        // Handle tool calls
+        this.processResponse(response);
+      } else {
+        // Handle regular text response
+        this.chatHistory.push({
+          role: 'assistant',
+          content: response.message.content,
+        });
+        console.log(response.message.content);
+        this.ui.write(response.message.content + '\n');
+      }
+      // await this.processResponse(response);
+      
+    } catch (error) {
+      console.error('Error calling Ollama API:', error);
+      this.ui.write('Sorry, I encountered an error processing your request.\n');
+    }
   }
 }
 
 function setupOllama() {
-  const ollamaBaseUrl = process.env.OLLAMA_BASE_URL || 'http://localhost:11434';
-  const ollamaModel = process.env.OLLAMA_MODEL || 'llama3.1:8b';
+  const ollamaBaseUrl = process.env.OLLAMA_API_URL;
+  const ollamaModel = process.env.OLLAMA_MODEL;
+
+  if (!ollamaBaseUrl || !ollamaModel) {
+    throw new Error('OLLAMA_API_URL and OLLAMA_MODEL must be set');
+  }
   
   return { ollamaBaseUrl, ollamaModel };
 }
@@ -150,12 +176,12 @@ async function setupMcpTools(client: Client) {
       name: tool.name,
       description: tool.description || '',
       parameters: {
-      type: 'object',
-      properties: {
-        topic: { type: 'string', description: 'The topic of the tool' },
-        content: { type: 'string', description: 'The content of the tool' },
-      },
-      required: ['topic', 'content'],
+        type: 'object',
+        properties: {
+          topic: { type: 'string', description: 'The topic of the tool' },
+          content: { type: 'string', description: 'The content of the tool' },
+        },
+        required: ['topic', 'content'],
       },
     },
   }));
