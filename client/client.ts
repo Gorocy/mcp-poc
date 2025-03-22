@@ -1,9 +1,9 @@
-import rl from 'node:readline/promises';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import type { Tool } from 'ollama';
 import dotenv from 'dotenv';
 import OllamaChatHandler from './ollamaChatHandler.js';
+import ColoredReadlineInterface from './coloredReadlineInterface.js';
 
 dotenv.config();  
 
@@ -18,8 +18,11 @@ function setupOllama() {
   return { ollamaBaseUrl, ollamaModel };
 }
 
-async function setupMcpTools(client: Client) {
+async function setupMcpTools(client: Client, ui: ColoredReadlineInterface) {
   const mcpResources = await client.listResources();
+  
+  ui.writeSystem(`Resources: ${JSON.stringify(mcpResources, null, 2)}`);
+
   const resourceTools: Tool[] = mcpResources.resources.map((res) => ({
     type: 'function',
     function: {
@@ -68,14 +71,17 @@ async function main() {
     await client.connect(transport);
 
     const { ollamaBaseUrl, ollamaModel } = setupOllama();
-    const tools = await setupMcpTools(client);
-    const ui = rl.createInterface({
-      input: process.stdin,
-      output: process.stdout,
-    });
 
-    console.log(`Connected to Ollama at ${ollamaBaseUrl} using model ${ollamaModel}`);
-    console.log('MCP tools and resources loaded successfully');
+    const ui = new ColoredReadlineInterface(process.stdin, process.stdout);
+
+    const tools = await setupMcpTools(client, ui);
+
+    ui.writeSystem(`Connected to Ollama at ${ollamaBaseUrl} using model ${ollamaModel}`);
+    ui.writeSystem('MCP tools and resources loaded successfully');
+
+    ui.writeSystem(`tools: ${tools.tools.map((tool) => tool.function.name).join(', ')}`);
+    ui.writeSystem(`resources: ${tools.resources.map((resource) => resource.function.name).join(', ')}`);
+
 
     const chatHandler = new OllamaChatHandler(
       ollamaBaseUrl,

@@ -1,7 +1,7 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import type { Tool } from 'ollama';
 import { Ollama } from 'ollama';
-import rl from 'node:readline/promises';
+import ColoredReadlineInterface from './coloredReadlineInterface.js';
 
 class OllamaChatHandler {
     private chatHistory: { role: string; content: string; tool_call_id?: string; name?: string }[] = [];
@@ -9,7 +9,7 @@ class OllamaChatHandler {
     private ollamaModel: string;
     private client: Client;
     private tools: { resources: Tool[]; tools: Tool[] };
-    private ui: rl.Interface;
+    private ui: ColoredReadlineInterface;
     private ollama: Ollama;
     
     constructor(
@@ -17,7 +17,7 @@ class OllamaChatHandler {
       ollamaModel: string,
       client: Client,
       tools: { resources: Tool[]; tools: Tool[] },
-      ui: rl.Interface
+      ui: ColoredReadlineInterface
     ) {
       this.ollamaModel = ollamaModel;
       this.client = client;
@@ -37,12 +37,12 @@ class OllamaChatHandler {
       
       // If there are tool calls, process them
       if (response.message.tool_calls && response.message.tool_calls.length > 0) {
-        this.ui.write("🔧 Using tools to find information...\n");
+        this.ui.writeProgress("🔧 Using tools to find information...");
         
         // For each tool call
         for (const toolCall of response.message.tool_calls) {
           const toolName = toolCall.function.name;
-          this.ui.write(`🔍 Using tool: ${toolName}\n`);
+          this.ui.writeProgress(`🔍 Using tool: ${toolName}`);
           
           // Call the tool and get response
           const toolResponse = await this.callToolOrResource(
@@ -51,7 +51,7 @@ class OllamaChatHandler {
           );
           
           // Show the tool response to the user
-          this.ui.write(`📊 Tool result: ${toolResponse}\n`);
+          this.ui.writeTool(`📊 Tool result: ${toolResponse}`);
           
           // Add tool response to chat history with proper format
           this.chatHistory.push({
@@ -66,7 +66,7 @@ class OllamaChatHandler {
         await this.getFinalAnswer();
       } else {
         // Just display the regular assistant response
-        this.ui.write(response.message.content + '\n');
+        this.ui.writeLLM(response.message.content);
       }
     }
   
@@ -74,6 +74,14 @@ class OllamaChatHandler {
       try {
         // Get a final answer from Ollama using the full conversation history
         // including the tool responses
+
+        // TODO: Add a message to the chat history that asks the LLM to summarize the conversation and the results of the tools
+
+        // this.chatHistory.push({
+        //   role: 'user',
+        //   content: "Tell what tools were used and what was the result of each tool."
+        // })
+
         const finalResponse = await this.ollama.chat({
           model: this.ollamaModel,
           messages: this.chatHistory,
@@ -86,10 +94,10 @@ class OllamaChatHandler {
         });
         
         // Display the final answer to the user
-        this.ui.write(`\n🤖 Answer: ${finalResponse.message.content}\n`);
+        this.ui.writeLLM(`\n🤖 Answer: ${finalResponse.message.content}`);
       } catch (error) {
         console.error('Error getting final answer:', error);
-        this.ui.write('Sorry, I had trouble processing the results.\n');
+        this.ui.writeError('Sorry, I had trouble processing the results.');
       }
     }
   
@@ -137,7 +145,7 @@ class OllamaChatHandler {
         }
       }
   
-      const prompt = await this.ui.question(this.aiGreetingText + '\n');
+      const prompt = await this.ui.question(`${this.aiGreetingText}\n`);
       
       this.chatHistory.push({ role: 'user', content: prompt });
   
@@ -153,7 +161,7 @@ class OllamaChatHandler {
         await this.processResponse(response);
       } catch (error) {
         console.error('Error calling Ollama API:', error);
-        this.ui.write('Sorry, I encountered an error processing your request.\n');
+        this.ui.writeError('Sorry, I encountered an error processing your request.');
       }
     }
   }
