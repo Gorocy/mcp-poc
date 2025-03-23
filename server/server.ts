@@ -13,6 +13,7 @@ const server = new McpServer({
 // Exposing a tool that manipulates stored data
 server.tool(
   'store-knowledge',
+  'function calling database to save data about some topic',
   { topic: z.string(), content: z.string() },
   async ({ topic, content }) => {
     try {
@@ -61,7 +62,139 @@ server.tool(
   }
 );
 
+// Exposing a tool that manipulates stored data
+server.tool(
+  'calculator',
+  'function calling calculator to calculate the result of an operation, ONLY available operations: add, subtract, multiply, divide',
+  { operation: z.string(), a: z.string(), b: z.string() },
+  async ({ operation, a, b }) => {
+    try {
+      const response = await fetch(`http://localhost:4000/${operation}/${a}/${b}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Failed to calculate, received response status: ${response.statusText}`,
+            },
+          ],
+        };
+      }
+
+      const data = await response.json();
+
+      return {
+        content: [{ type: 'text', text: `Calculated: - ${a}  -  ${operation} - ${b} = ${data.result}` }],
+      };
+    } catch (error) {
+      if (error instanceof Error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Failed to calculate, received error: ${error.message}`,
+            },
+          ],
+        };
+      }
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `Failed to calculate, received error: ${error}`,
+          },
+        ],
+      };
+    }
+  }
+);
+
+// // Exposing data to the LLM
+// server.resource(
+//   'knowledge-for-topic',
+//   new ResourceTemplate('knowledge://{topic}', {
+//     list: async () => {
+//       try {
+//         const response = await fetch('http://localhost:8080/knowledge');
+
+//         if (!response.ok) {
+//           return { resources: [] };
+//         }
+
+//         const data = (await response.json()) as string[];
+
+//         return {
+//           resources: data.map((topic) => ({
+//             uri: `knowledge://${topic}`,
+//             description: 'A stored piece of knowledge - speficially, stored knowledge about topic: ' + topic,
+//             name: topic,
+//           })),
+//         };
+//       } catch (error) {
+//         return { resources: [] };
+//       }
+//     },
+//   }),
+//   async (uri, { topic }) => {
+//     try {
+//       const response = await fetch(
+//         `http://localhost:8080/knowledge?topic=${topic}`
+//       );
+
+//       if (!response.ok) {
+//         return {
+//           contents: [
+//             {
+//               uri: uri.href,
+//               text: `Failed to retrieve knowledge for topic: ${topic}, received response status: ${response.statusText}`,
+//             },
+//           ],
+//         };
+//       }
+
+//       const data = await response.json();
+
+//       return {
+//         contents: [
+//           {
+//             uri: uri.href,
+//             text: `Knowledge for topic: ${topic} - ${data.content}`,
+//           },
+//         ],
+//       };
+//     } catch (error) {
+//       if (error instanceof Error) {
+//         return {
+//           contents: [
+//             {
+//               uri: uri.href,
+//               text: `Failed to retrieve knowledge for topic: ${topic}, received error: ${error.message}`,
+//             },
+//           ],
+//         };
+//       }
+//       return {
+//         contents: [
+//           {
+//             uri: uri.href,
+//             text: `Failed to retrieve knowledge for topic: ${topic}, received error: ${error}`,
+//           },
+//         ],
+//       };
+//     }
+//   }
+// );
+
 // Exposing data to the LLM
+
+// resource(name: string, template: ResourceTemplate, metadata: ResourceMetadata, readCallback: ReadResourceTemplateCallback): void;
+
 server.resource(
   'knowledge-for-topic',
   new ResourceTemplate('knowledge://{topic}', {

@@ -1,0 +1,10 @@
+services:
+  surrealdb:
+    build:
+      context: .
+      dockerfile: surrealdb.Dockerfile
+    container_name: surrealdb
+    ports:
+      - "8000:8000"
+
+
