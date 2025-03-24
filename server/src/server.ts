@@ -7,7 +7,6 @@ import { storeKnowledgeTool, storeKnowledge } from './storeKnowledge.js';
 import { calculatorTool, calculatorService } from './calculatorTool.js';
 import type { Tool } from '@modelcontextprotocol/sdk/types.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import dotenv from 'dotenv';
 
 
 // type properties = {
