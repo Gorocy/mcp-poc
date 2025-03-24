@@ -5,6 +5,40 @@ services:
       dockerfile: surrealdb.Dockerfile
     container_name: surrealdb
     ports:
-      - "8000:8000"
+      - ${SURREALDB_PORT}:${SURREALDB_PORT}
+    entrypoint:
+      - "/surreal"
+      - "start"
+      - "--user"
+      - "${AUTH_SURREALDB_USERNAME}"
+      - "--pass"
+      - "${AUTH_SURREALDB_PASSWORD}"
+      - "memory"
+      - "--import-file"
+      - "init.surql"
 
+  service:
+    build:
+      context: ./service
+    container_name: mcp-service
+    ports:
+      - ${SERVICE_PORT}:${SERVICE_PORT}
+    depends_on:
+      - surrealdb
+    env_file:
+      - .env
+    entrypoint:
+      - "npm"
+      - "run"
+      - "preview"
 
+  calculator:
+    build:
+      context: ./calculator
+      dockerfile: Dockerfile
+    env_file:
+      - .env
+    entrypoint:
+      - "npm"
+      - "run"
+      - "preview"

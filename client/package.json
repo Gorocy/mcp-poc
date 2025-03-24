@@ -3,7 +3,8 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "npx tsx client.ts"
+    "dev": "npm run buildServer && npx tsx src/client.ts",
+    "buildServer": "cd ../server && npm run build"
   },
   "keywords": [],
   "description": "Demo MCP client using Ollama",

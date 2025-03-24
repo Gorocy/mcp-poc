@@ -102,6 +102,8 @@ class OllamaChatHandler {
     }
   
     private async callToolOrResource(toolName: string, args: string) {
+      this.ui.writeProgress(`🔍 Calling tool: ${toolName}`);
+      this.ui.writeProgress(`🔍 Calling tool: ${args}`);
       if (this.isTool(toolName)) {
         const { content } = await this.client.callTool({
           name: toolName,
@@ -111,9 +113,13 @@ class OllamaChatHandler {
           ? content[0].text
           : 'No response from the tool.';
       } else if (this.isResource(toolName)) {
+        this.ui.writeProgress(`🔍 Reading resource name: ${toolName}`);
+        const argsObject = JSON.parse(args);
         const { contents } = await this.client.readResource({
-          uri: 'knowledge://' + toolName,
+          // TODO: Add a prefix to the resource name to make it unique
+          uri: 'knowledge://' +  argsObject.topic,
         });
+        this.ui.writeProgress(`🔍 Reading resource result: ${JSON.stringify(contents)}`);
         return contents[0]?.text || 'No content found in the resource.';
       }
   

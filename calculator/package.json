@@ -3,7 +3,9 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "node --loader ts-node/esm --watch app.ts"
+    "dev": "node --loader ts-node/esm --watch app.ts",
+    "build": "tsc",
+    "preview": "node dist/app.js"
   },
   "keywords": [],
   "description": "Calculator service",

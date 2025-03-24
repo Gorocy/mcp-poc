@@ -2,18 +2,30 @@ import express, { Request, Response } from 'express';
 import cors from 'cors';
 import slugify from 'slugify';
 import Surreal from 'surrealdb';
+import dotenv from 'dotenv';
+
+dotenv.config();
+
+const SURREALDB_URL = process.env.SURREALDB_URL;
+const SURREALDB_USER = process.env.AUTH_SURREALDB_USERNAME;
+const SURREALDB_PASSWORD = process.env.AUTH_SURREALDB_PASSWORD;
+const SERVICE_PORT = process.env.SERVICE_PORT;
+
+if (!SURREALDB_URL || !SURREALDB_USER || !SURREALDB_PASSWORD || !SERVICE_PORT) {
+  throw new Error('Missing environment variables');
+}
 
 const db = new Surreal();
 
 async function initDatabase() {
   try {
     // Connect to SurrealDB
-    await db.connect(process.env.SURREALDB_URL || 'http://localhost:8000/rpc');
+    await db.connect(SURREALDB_URL as string);
     
     // Correct way to login - without namespace in parameters
     await db.signin({
-      username: 'root',
-      password: 'root'
+      username: SURREALDB_USER as string,
+      password: SURREALDB_PASSWORD as string
     });
     
     // Select namespace and database after login
@@ -34,35 +46,47 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-app.get('/knowledge', async (req: Request, res: Response) => {
-  const topic = req.query.topic?.toString();
-
+type knowledge = {
+  content: string,
+  topic: string,
+  id: string
+}
+app.get('/knowledge/:topic', async (req: Request, res: Response) => {
   try {
-    if (!topic) {
-      // Get all topics
-      const result = await db.query('SELECT topic FROM knowledge');
-      const queryResult = result as unknown as [{ result: Array<{ topic: string }> }];
-      const topics = queryResult[0]?.result?.map(item => item.topic) || [];
-      return res.json(topics);
-    }
+    console.log("Fetch for :", req.params.topic);
 
-    // Get specific topic
-    const result = await db.query(
-      'SELECT * FROM knowledge WHERE topic = $topic',
-      { topic: topic.toUpperCase() }
-    );
+    const result = await db.query<knowledge[]>(`SELECT * FROM knowledge WHERE topic = '${req.params.topic}'`);
+
+    if (!result) {
+      return res.status(404).send('No topics found');
+    }
+    let response;
+    if (Array.isArray(result[0])) {
+      response = result[0][0];
+    } else {
+      response = result[0];
+    }
     
-    const queryResult = result as unknown as [{ result: Array<{ topic: string, content: string }> }];
-    const topicData = queryResult[0]?.result?.[0];
+    console.log("Result:", response);
+    return res.json(response);
+  } catch (error) {
+    console.error('Error fetching topics:', error);
+    return res.status(500).send('Internal Server Error');
+  }
+});
 
-    if (!topicData) {
-      return res.status(404).send('Topic not found');
-    }
+app.get('/knowledge', async (req: Request, res: Response) => {
+  try {
+    const result = await db.query('SELECT topic FROM knowledge');
 
-    res.json(topicData);
+      const queryResult = result as unknown as [{ result: Array<{ topic: string }> }];
+
+      return res.json(queryResult);
+    
+
   } catch (error) {
     console.error('Error fetching knowledge:', error);
-    res.status(500).send('Internal Server Error');
+    return res.status(500).send('Internal Server Error');
   }
 });
 
@@ -84,7 +108,7 @@ app.post('/knowledge', async (req: Request, res: Response) => {
     console.log('Attempting to save to database:', { topic: topicIdentifierSlug, content });
     const result = await db.query(
       'CREATE knowledge SET topic = $topic, content = $content',
-      { topic: topicIdentifierSlug, content: content }
+      { topic: topicIdentifierSlug.toLowerCase(), content: content }
     );
     
     console.log('Database query result:', result);
@@ -97,7 +121,7 @@ app.post('/knowledge', async (req: Request, res: Response) => {
 
 // Initialize database before starting the server
 initDatabase().then(() => {
-  app.listen(8080, () => {
-    console.log('Service running on port 8080');
+  app.listen(SERVICE_PORT, () => {
+    console.log(`Service running on port ${SERVICE_PORT}`);
   });
 });

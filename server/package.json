@@ -3,7 +3,8 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "node --loader ts-node/esm --watch server.ts"
+    "build": "tsc",
+    "dev": "tsc --watch & node --watch dist/server.js"
   },
   "keywords": [],
   "description": "Demo MCP Server consuming a dummy knowledge service",
@@ -13,6 +14,7 @@
   },
   "devDependencies": {
     "@types/node": "^22.13.10",
+    "@types/express": "^4.17.21",
     "ts-node": "^10.9.2",
     "typescript": "^5.4.3"
   }
