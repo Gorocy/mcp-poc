@@ -1,8 +1,13 @@
 import { Tool } from "@modelcontextprotocol/sdk/types.js";
+import dotenv from 'dotenv';
 
-const CALCULATOR_PORT = process.env.CALCULATOR_PORT
+dotenv.config();
 
-const host = process.env.CALCULATOR_HOST || `http://localhost:${CALCULATOR_PORT}`;
+const host = process.env.CALCULATOR_HOST
+
+if (!host){
+    throw new Error('Missing environment variables');
+}
 
 const operations = ['add', 'subtract', 'multiply', 'divide'];
 export const calculatorTool: Tool = {

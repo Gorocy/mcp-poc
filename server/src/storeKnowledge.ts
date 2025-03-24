@@ -1,8 +1,13 @@
 import { Tool } from "@modelcontextprotocol/sdk/types.js";
+import dotenv from 'dotenv';
 
-const SERVICE_PORT = process.env.SERVICE_PORT
+dotenv.config();
 
-const host = process.env.SERVICE_URL || `http://localhost:${SERVICE_PORT}`;
+const host = process.env.SERVICE_URL
+
+if (!host){
+    throw new Error('Missing environment variables');
+}
 
 export const storeKnowledgeTool: Tool = {
     name: 'store-knowledge',
