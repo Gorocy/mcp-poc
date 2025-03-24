@@ -3,8 +3,7 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-// TODO
-const host = process.env.SERVICE_URL || 'http://localhost:8080';
+const host = process.env.SERVICE_URL;
 
 if (!host){
     throw new Error('Missing environment variables');

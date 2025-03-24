@@ -1,12 +1,12 @@
 import {
   McpServer,
-  ResourceTemplate,
 } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { storeKnowledgeTool, storeKnowledge } from './storeKnowledge.js';
 import { calculatorTool, calculatorService } from './calculatorTool.js';
 import type { Tool } from '@modelcontextprotocol/sdk/types.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+import {  resourcesSurrealsbResource, getKnowledge } from './resource.js';
 
 
 // type properties = {
@@ -27,10 +27,14 @@ const tools: Tool[] = [
   calculatorTool
 ]
 
+// const resources: Resource[] = [
+//   resourcesSurrealsbTool
+// ]
+
 for (const tool of tools) {
   const inputSchema = Object.fromEntries(
     Object.entries(tool.inputSchema?.properties || {}).map(([key, prop]) => {
-      // Mapowanie typów JSON Schema na typy Zod
+      // MAPPING JSON SCHEMA TO ZOD
       const typedProp = prop as { type?: string };
       
       if (typedProp.type === 'string') {
@@ -44,13 +48,7 @@ for (const tool of tools) {
       }
     })
   );
-  // const functionInput = Object.fromEntries(
-  //   Object.entries(tool.inputSchema?.properties || {}).map(([key, prop]) => {
-  //     const typedProp = prop as properties[string];
-  //     return [key, typedProp.type];
-  //   })
-  // );
-  // console.log(functionInput);
+
   server.tool(
     tool.name,
     tool.description || 'No description provided',
@@ -90,77 +88,9 @@ for (const tool of tools) {
 
 server.resource(
   'knowledge-for-topic',
-  new ResourceTemplate('knowledge://{topic}', {
-    list: async () => {
-      try {
-        const response = await fetch('http://localhost:8080/knowledge');
-        console.log(response);
-        if (!response.ok) {
-          return { resources: [] };
-        }
-
-        const data = (await response.json()) as string[];
-
-        return {
-          resources: data.map((topic) => ({
-            uri: `knowledge://${topic}`,
-            description: 'A stored piece of knowledge - speficially, stored knowledge about topic: ' + topic,
-            name: topic,
-          })),
-        };
-      } catch (error) {
-        return { resources: [] };
-      }
-    },
-  }),
-
+  resourcesSurrealsbResource,
   async (uri, { topic }) => {
-    try {
-      const response = await fetch(
-        `http://localhost:8080/knowledge/${topic}`
-      );
-      
-      if (!response.ok) {
-        return {
-          contents: [
-            {
-              uri: uri.href,
-              text: `Failed to retrieve knowledge for topic R: ${topic}, received response status: ${response.statusText}`,
-            },
-          ],
-        };
-      }
-      
-      const data = await response.json();
-      
-      return {
-        contents: [
-          {
-            uri: uri.href,
-            text: `Knowledge for topic: ${topic} - ${data.content}`,
-          },
-        ],
-      };
-    } catch (error) {
-      if (error instanceof Error) {
-        return {
-          contents: [
-            {
-              uri: uri.href,
-              text: `Failed to retrieve knowledge for topic E: ${topic}, received error: ${error.message}`,
-            },
-          ],
-        };
-      }
-      return {
-        contents: [
-          {
-            uri: uri.href,
-            text: `Failed to retrieve knowledge for topic F: ${topic}, received error: ${error}`,
-          },
-        ],
-      };
-    }
+    return getKnowledge(uri, { topic: topic as string });
   }
 );
 

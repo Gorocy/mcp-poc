@@ -16,6 +16,10 @@ if (!SURREALDB_URL || !SURREALDB_USER || !SURREALDB_PASSWORD || !SERVICE_PORT) {
 }
 
 const db = new Surreal();
+let isConnected = false;
+let reconnectAttempts = 0;
+const MAX_RECONNECT_ATTEMPTS = 5;
+const RECONNECT_INTERVAL = 5000; // 5 seconds
 
 async function initDatabase() {
   try {
@@ -35,9 +39,35 @@ async function initDatabase() {
     });
     
     console.log('Connected to SurrealDB');
+    isConnected = true;
+    reconnectAttempts = 0;
   } catch (error) {
     console.error('Database connection error:', error);
-    process.exit(1);
+    isConnected = false;
+    
+    if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
+      reconnectAttempts++;
+      console.log(`Reconnection attempt ${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS} in ${RECONNECT_INTERVAL}ms`);
+      
+      // Schedule reconnection attempt
+      setTimeout(() => {
+        console.log('Attempting to reconnect to database...');
+        initDatabase();
+      }, RECONNECT_INTERVAL);
+    } else {
+      console.error('Max reconnection attempts reached. Exiting...');
+      process.exit(1);
+    }
+  }
+}
+
+async function disconnectDatabase() {
+  try {
+    await db.close();
+    console.log('Disconnected from SurrealDB');
+    isConnected = false;
+  } catch (error) {
+    console.error('Error disconnecting from database:', error);
   }
 }
 
@@ -71,6 +101,10 @@ app.get('/knowledge/:topic', async (req: Request, res: Response) => {
     return res.json(response);
   } catch (error) {
     console.error('Error fetching topics:', error);
+    // If connection error, attempt to reconnect
+    if (!isConnected) {
+      initDatabase();
+    }
     return res.status(500).send('Internal Server Error');
   }
 });
@@ -78,14 +112,14 @@ app.get('/knowledge/:topic', async (req: Request, res: Response) => {
 app.get('/knowledge', async (req: Request, res: Response) => {
   try {
     const result = await db.query('SELECT topic FROM knowledge');
-
-      const queryResult = result as unknown as [{ result: Array<{ topic: string }> }];
-
-      return res.json(queryResult);
-    
-
+    const queryResult = result as unknown as [{ result: Array<{ topic: string }> }];
+    return res.json(queryResult);
   } catch (error) {
     console.error('Error fetching knowledge:', error);
+    // If connection error, attempt to reconnect
+    if (!isConnected) {
+      initDatabase();
+    }
     return res.status(500).send('Internal Server Error');
   }
 });
@@ -115,6 +149,10 @@ app.post('/knowledge', async (req: Request, res: Response) => {
     res.status(201).send('Knowledge created');
   } catch (error) {
     console.error('Error creating knowledge:', error);
+    // If connection error, attempt to reconnect
+    if (!isConnected) {
+      initDatabase();
+    }
     return res.status(409).send('Topic already exists or server error');
   }
 });

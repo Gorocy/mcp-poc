@@ -8,9 +8,8 @@ import { storeKnowledgeTool } from './tools/storeKnowledge.js';
 import { resourcesSurrealsbTool } from './resources/resourcesSurrealsb.js';
 import { calculatorTool } from './tools/calculator.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
-dotenv.config();  
 
-// import { resource } from '../../server/src/resource.js';
+dotenv.config();  
 
 function setupOllama() {
   const ollamaBaseUrl = process.env.OLLAMA_API_URL;

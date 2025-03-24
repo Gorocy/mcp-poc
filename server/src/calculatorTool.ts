@@ -4,7 +4,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 // TODO
-const host = process.env.CALCULATOR_HOST || 'http://localhost:4000';
+const host = process.env.CALCULATOR_HOST;
 
 if (!host){
     throw new Error('Missing environment variables');
