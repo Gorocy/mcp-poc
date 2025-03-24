@@ -36,6 +36,8 @@ services:
     build:
       context: ./calculator
       dockerfile: Dockerfile
+    ports:
+      - ${CALCULATOR_PORT}:${CALCULATOR_PORT}
     env_file:
       - .env
     entrypoint:

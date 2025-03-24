@@ -1,5 +1,9 @@
 import { Tool } from "@modelcontextprotocol/sdk/types.js";
 
+const SERVICE_PORT = process.env.SERVICE_PORT
+
+const host = process.env.SERVICE_URL || `http://localhost:${SERVICE_PORT}`;
+
 export const storeKnowledgeTool: Tool = {
     name: 'store-knowledge',
     description: 'function calling database to save data about some topic',
@@ -17,7 +21,7 @@ export async function storeKnowledge(params: { topic: string, content: string })
     try {
         const { topic, content } = params;
 
-    const response = await fetch('http://localhost:8080/knowledge', {
+    const response = await fetch(`${host}/knowledge`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',

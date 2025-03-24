@@ -1,7 +1,7 @@
 FROM node AS installer
 WORKDIR /app
 COPY . .
-RUN npm i
+RUN npm ci
 
 FROM installer AS builder
 WORKDIR /app

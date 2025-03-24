@@ -1,5 +1,9 @@
 import { Tool } from "@modelcontextprotocol/sdk/types.js";
 
+const CALCULATOR_PORT = process.env.CALCULATOR_PORT
+
+const host = process.env.CALCULATOR_HOST || `http://localhost:${CALCULATOR_PORT}`;
+
 const operations = ['add', 'subtract', 'multiply', 'divide'];
 export const calculatorTool: Tool = {
     name: 'calculator',
@@ -25,7 +29,7 @@ export async function calculatorService(input: { operation: string, a: number, b
             };
         }
 
-        const response = await fetch(`http://localhost:4000/${operation}/${a}/${b}`);
+        const response = await fetch(`${host}/${operation}/${a}/${b}`);
         const data = await response.json();
         
         return {
