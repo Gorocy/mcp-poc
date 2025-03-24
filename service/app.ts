@@ -84,8 +84,8 @@ type knowledge = {
 app.get('/knowledge/:topic', async (req: Request, res: Response) => {
   try {
     console.log("Fetch for :", req.params.topic);
-
-    const result = await db.query<knowledge[]>(`SELECT * FROM knowledge WHERE topic = '${req.params.topic}'`);
+    
+    const result = await db.query<knowledge[]>(`SELECT * FROM knowledge WHERE topic = '${req.params.topic.toLowerCase()}'`);
 
     if (!result) {
       return res.status(404).send('No topics found');
